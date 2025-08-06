@@ -1,0 +1,13 @@
+# Core data & ML libraries
+pandas
+numpy
+scikit-learn
+imbalanced-learn
+joblib
+
+# Visualization
+matplotlib
+seaborn
+
+# Web App Interface
+streamlit
