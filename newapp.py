@@ -1,5 +1,3 @@
-# app.py
-
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -26,7 +24,11 @@ def user_input_features():
     hypertension = st.selectbox("Hypertension", ["No", "Yes"])
     heart_disease = st.selectbox("Heart Disease", ["No", "Yes"])
     ever_married = st.selectbox("Ever Married", ["No", "Yes"])
-    work_type = st.selectbox("Work Type", ["Private", "Self-employed", "Govt_job", "Children", "Never_worked"])
+    
+    # Removed "Children" from options here
+    work_type_options = ["Private", "Self-employed", "Govt_job", "Never_worked"]
+    work_type = st.selectbox("Work Type", work_type_options)
+    
     Residence_type = st.selectbox("Residence Type", ["Urban", "Rural"])
     avg_glucose_level = st.slider("Average Glucose Level", 40.0, 300.0, 100.0)
     bmi = st.slider("BMI", 10.0, 60.0, 22.0)
@@ -50,10 +52,19 @@ def user_input_features():
 # === Input Data ===
 input_df = user_input_features()
 
+# Just in case (defensive), check if work_type is "Children" (should never happen), and stop:
+if input_df.loc[0, "work_type"] == "Children":
+    st.error("Invalid input detected: 'Children' is not allowed as Work Type.")
+    st.stop()
+
 # === Encode Categorical Columns ===
 for col in label_encoders:
     if col in input_df.columns:
         le = label_encoders[col]
+        # To avoid errors in transform, check if value exists in label encoder classes:
+        if input_df.loc[0, col] not in le.classes_:
+            st.error(f"Input value '{input_df.loc[0, col]}' for '{col}' is invalid or not recognized by the model.")
+            st.stop()
         input_df[col] = le.transform(input_df[col])
 
 # === Select & Scale Features ===
@@ -66,17 +77,16 @@ if st.button("Predict Stroke Risk"):
     prediction = model.predict(X_input_scaled)[0]
     probability = model.predict_proba(X_input_scaled)[0][1]
 
+    # Note: Usually 1 means positive class (stroke), 0 means no stroke. 
+    # Your original code uses "if prediction == 1: st.error(✅ Low Risk)" which seems reversed.
+    # Adjusting logic assuming 1 = stroke risk (High risk).
     if prediction == 1:
-        st.error(f"✅ Low Risk of Stroke! (Probability: {probability:.2f})")
+        st.error(f"⚠️ High Risk of Stroke. (Probability: {probability:.2f})")
     else:
-        st.success(f"⚠️ High Risk of Stroke. (Probability: {probability:.2f})")
+        st.success(f"✅ Low Risk of Stroke! (Probability: {probability:.2f})")
 
 # === Sidebar for Metrics and Docs ===
 st.sidebar.title("📊 Model Evaluation")
-
-# if os.path.exists("models/evaluation_report.txt"):
-#     with open("models/evaluation_report.txt", "r") as file:
-#         st.sidebar.text(file.read())
 
 if os.path.exists("models/confusion_matrix.png"):
     st.sidebar.image("models/confusion_matrix.png", caption="Confusion Matrix", use_container_width=True)
@@ -86,4 +96,3 @@ if os.path.exists("models/roc_curve.png"):
 
 st.sidebar.markdown("---")
 st.sidebar.info("Developed using Chi-Square + MLP Classifier")
-
